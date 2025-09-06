@@ -12,6 +12,7 @@ import (
 
 func main() {
 	// 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+	// 设置用户名 密码 并选中数据库，需要该用户对该数据库有完全访问权限
 	dsn := "luke:0714@tcp(127.0.0.1:3306)/crud-list?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -20,7 +21,10 @@ func main() {
 		log.Println("Connected to database")
 	}
 
-	sqlDB, err := db.DB()
+	sqlDB, sqlDBErr := db.DB()
+	if sqlDBErr != nil {
+		log.Fatalf("failed to get sql.DB from gorm: %v", err)
+	}
 	// SetMaxIdleConns 设置空闲连接池中连接的最大数量。
 	sqlDB.SetMaxIdleConns(10)
 	// SetMaxOpenConns 设置打开数据库连接的最大数量。
@@ -35,7 +39,7 @@ func main() {
 		Email   string
 		Address string
 	}
-	db.AutoMigrate(List{})
+	_ = db.AutoMigrate(List{})
 
 	r := gin.Default()
 	_ = r.SetTrustedProxies([]string{"127.0.0.1"})

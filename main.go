@@ -62,6 +62,7 @@ func main() {
 	//c create
 	router.POST("user/add", func(c *gin.Context) {
 		var json List
+		//绑定json，判定数据是否合法
 		err := c.ShouldBindJSON(&json)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -69,20 +70,52 @@ func main() {
 				"data":    gin.H{},
 				"code":    "ADD_FAILED",
 			})
-		} else {
-			//数据库操作
-			db.Create(&json)
-			c.JSON(http.StatusOK, gin.H{
-				"message": "添加成功",
-				"data":    json,
-				"code":    "ADD_SUCCESS",
-			})
+			return
 		}
+		//插入数据库，判断数据库是否健康
+		res := db.Create(&json)
+		if res.Error != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "添加失败:" + res.Error.Error(),
+				"data":    gin.H{},
+				"code":    "ADD_FAILED",
+			})
+			return
+		}
+		//最后成功
+		c.JSON(http.StatusOK, gin.H{
+			"message": "添加成功",
+			"data":    json,
+			"code":    "ADD_SUCCESS",
+		})
 	})
 	//r read
 	//u update
 	//d delete
-
+	//restful规范
+	router.DELETE("user/delete/:id", func(c *gin.Context) {
+		var json []List
+		id := c.Param("id")
+		//在user/delete?id="id"的情况下
+		//id := c.Query("id")
+		//从数据库查询数据
+		db.Where("id = ?", id).Find(&json)
+		//从json判断是否存在，存在删除，不存在报错
+		if len(json) == 0 {
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "删除失败:用户不存在",
+				"code":    "DELETE_NOTFOUND",
+			})
+			return
+		} else {
+			//操作数据库删除
+			db.Where("id = ?", id).Delete(&json)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "删除成功",
+				"code":    "DELETE_SUCCESS",
+			})
+		}
+	})
 	PORT := "3000"
 	_ = router.Run(":" + PORT)
 }

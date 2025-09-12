@@ -58,7 +58,7 @@ func main() {
 
 	//业务码约定
 	//正确:ADD_SUCCESS 错误:ADD_FAILED
-
+	//restful规范
 	//c create
 	router.POST("user/add", func(c *gin.Context) {
 		var json List
@@ -68,7 +68,7 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"message": "添加失败:" + err.Error(),
 				"data":    gin.H{},
-				"code":    "ADD_FAILED",
+				"code":    "BAD_REQUEST",
 			})
 			return
 		}
@@ -91,8 +91,40 @@ func main() {
 	})
 	//r read
 	//u update
+	router.PUT("user/update/:id", func(c *gin.Context) {
+		//1 查找对应的ID
+		var json List
+		id := c.Param("id")
+		//2 判断ID是否存在
+		db.Select("id").Where("id = ?", id).Find(&json)
+		//db.Where("id = ?", id).First(&json)
+		//3 若是没有查找到返回不存在
+		if json.ID == 0 {
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "修改失败:用户不存在",
+				"code":    "UPDATE_NOTFOUND",
+			})
+			return
+		}
+		//4 修改对应ID的条目
+		err := c.ShouldBindJSON(&json)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "修改失败:" + err.Error(),
+				"data":    gin.H{},
+				"code":    "BAD_REQUEST",
+			})
+			return
+		}
+		_ = db.Where("id = ?", id).Updates(&json)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "修改成功",
+			"data":    json,
+			"code":    "UPDATE_SUCCESS",
+		})
+
+	})
 	//d delete
-	//restful规范
 	router.DELETE("user/delete/:id", func(c *gin.Context) {
 		var json []List
 		id := c.Param("id")
@@ -116,6 +148,7 @@ func main() {
 			})
 		}
 	})
+
 	PORT := "3000"
 	_ = router.Run(":" + PORT)
 }
